@@ -1,4 +1,4 @@
-import 'package:black_jet_mb/screens/SeatSelection/seat_selection.dart';
+import 'package:black_jet_mb/screens/SeatSelection/index.dart';
 import 'package:flutter/material.dart';
 
 void main() {

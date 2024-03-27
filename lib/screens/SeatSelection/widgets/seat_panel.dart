@@ -7,8 +7,11 @@ import 'package:black_jet_mb/core/extensions/list.dart';
 import 'package:black_jet_mb/models/guest.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/add_person_dialog.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/add_pet_dialog.dart';
+import 'package:black_jet_mb/screens/SeatSelection/widgets/chosen_seat.dart';
+import 'package:black_jet_mb/screens/SeatSelection/widgets/drag_feedback.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/lines.dart';
 import 'package:black_jet_mb/services/logging_service.dart';
+import 'package:black_jet_mb/utils/seat_functions.dart';
 import 'package:black_jet_mb/widgets/bj_icon.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:flutter/material.dart';
@@ -38,6 +41,7 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
       AnimationController(vsync: this, duration: const Duration(seconds: 20))
         ..repeat();
   final GlobalKey _seatingsKey = GlobalKey();
+  final GlobalKey _dragFeedbackKey = GlobalKey();
   late final List<GlobalObjectKey> keys = [
     GlobalObjectKey(widget.screenWidth * 0.65 + widget.id),
     GlobalObjectKey(widget.screenWidth * 0.4 + widget.id),
@@ -48,40 +52,19 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
     GlobalObjectKey(widget.screenWidth * 0.2301 + widget.id),
     GlobalObjectKey(widget.screenWidth * 0.0501 + widget.id)
   ];
+  late final double lineLength =
+      (widget.screenWidth * 0.65 - widget.screenWidth * 0.4);
   static const double seatSize = 35;
-  final neighborMap = {
-    0: {1, 4},
-    1: {0, 2, 5},
-    2: {1, 3, 6},
-    3: {2, 7},
-    4: {0, 5},
-    5: {4, 6, 1},
-    6: {5, 2, 7},
-    7: {3, 6}
-  };
+
   final List<Guest?> guests = <Guest?>[
     null,
-    null,
+    Person(name: 'Michael', phone: '+911234567899', index: 1),
     Person(name: 'Michael', phone: '+911234567899', index: 2),
     Person(name: 'Michael', phone: '+911234567899', index: 3),
-    Person(name: 'Michael', phone: '+911234567899', index: 4),
     null,
+    Person(name: 'Michael', phone: '+911234567899', index: 5),
     null,
     null
-    // Pets(
-    //     name: "Banjo",
-    //     index: 6,
-    //     owner: Person(name: 'Michael', phone: '+911234567899', index: 7),
-    //     pets: [Pet(name: "Banjo", type: "Dog", breed: "Jack Russel")]),
-    // Person(
-    //     name: 'Michael',
-    //     phone: '+911234567899',
-    //     index: 7,
-    //     pets: Pets(
-    //         name: "Banjo",
-    //         index: 6,
-    //         owner: Person(name: 'Michael', phone: '+911234567899', index: 7),
-    //         pets: [Pet(name: "Banjo", type: "Dog", breed: "Jack Russel")]))
   ];
   final persons = <Person>[];
   final pets = <Pets>[];
@@ -109,7 +92,7 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
     guests[itemIndex] = temp;
 
     if (isPet) {
-      if (guests[swappingIndex] is Pets) {
+      if (guests[swappingIndex] is Pets && ownerIndex != null) {
         (guests[swappingIndex] as Pets).owner.index = ownerIndex;
       }
       if (guests[ownerIndex ?? -1] is Person) {
@@ -123,6 +106,7 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
     int updatingIndex = isDragging ? draggingIndex : movingIndex;
 
     if (guests[index]?.updateable ?? true) {
+      
       swap(updatingIndex, index);
 
       if (draggingChildIndex != -1) {
@@ -130,7 +114,10 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
             neighborMap[guests[index]?.index ?? -1] ?? {};
 
         for (int potentialIndex in potentialIndexes) {
-          if (guests[potentialIndex] == null) {
+          if ((guests[potentialIndex] == null ||
+                  draggingChildIndex == potentialIndex) &&
+              index != potentialIndex) {
+            
             swap(draggingChildIndex, potentialIndex,
                 isPet: true, ownerIndex: index);
 
@@ -139,21 +126,6 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
         }
       }
     }
-    if (!isDragging) {
-      setState(() {
-        movingIndex = -1;
-        isMoving = false;
-      });
-    } else {
-      setState(() {
-        draggingChildIndex = -1;
-        draggingIndex = -1;
-        movingIndex = -1;
-        isMoving = false;
-        isDragging = false;
-      });
-    }
-    lines.clear();
   }
 
   void addPerson(int index) async {
@@ -279,39 +251,6 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
     }
   }
 
-  void dragItemEnd(details) {
-    double averageWidth = widget.screenWidth / 4;
-    double dx = dragPosition?.dx ?? 0;
-    double dy = dragPosition?.dy ?? 0;
-    List<double> intervals = [
-      widget.screenWidth * .3,
-      averageWidth * 2,
-      averageWidth * 3,
-      averageWidth * 4
-    ];
-    bool isTop = (widget.id == 1) ? dy > 240 && dy < 286 : dy > 550 && dy < 620;
-    bool isFirst = dx < intervals[0];
-    bool isSecond = dx < intervals[1] && dx >= intervals[0];
-    bool isThird = dx < intervals[2] && dx >= intervals[1];
-    bool isFourth = dx > intervals[2];
-
-    int index = -1;
-
-    if (isTop) {
-      if (isFirst) index = 0;
-      if (isSecond) index = 1;
-      if (isThird) index = 2;
-      if (isFourth) index = 3;
-    } else {
-      if (isFirst) index = 4;
-      if (isSecond) index = 5;
-      if (isThird) index = 6;
-      if (isFourth) index = 7;
-    }
-
-    swapItems(index, isDragging: true, draggingChildIndex: draggingChildIndex);
-  }
-
   @override
   void initState() {
     super.initState();
@@ -321,47 +260,6 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback(drawLines);
 
-    Widget chosenSeat(Guest guest, int index) => Visibility(
-        visible: draggingChildIndex != index,
-        maintainState: true,
-        maintainAnimation: true,
-        maintainSize: true,
-        maintainSemantics: true,
-        maintainInteractivity: true,
-        child: Stack(children: [
-          OutlinedButton(
-              style: ElevatedButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  backgroundColor: guest.updateable
-                      ? BJColors.buttonColorActive
-                      : BJColors.buttonColorInactive,
-                  shape: const CircleBorder(),
-                  side: const BorderSide(style: BorderStyle.none)),
-              onPressed: () => selectAssignedSeat(guest),
-              onLongPress: guest.updateable
-                  ? () {
-                      setState(() {
-                        isMoving = true;
-                        movingIndex = guest.index ?? -1;
-                      });
-                    }
-                  : null,
-              child: Text(guest.name.characters.first.toUpperCase(),
-                  style: const TextStyle(
-                      color: BJColors.buttonTextColorDark,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400))),
-          Positioned(
-              top: 0,
-              right: 0,
-              child: CircleAvatar(
-                  radius: 7,
-                  backgroundColor: BJColors.chipBadgeColor,
-                  child: guest is Pets
-                      ? const BJIcon(icon: BJIcons.petDark, size: 7)
-                      : const Icon(Icons.person, size: 7)))
-        ]));
-
     Widget seat(Guest? guest, int index) {
       return Positioned(
           top: isDragging && (draggingIndex == index)
@@ -370,10 +268,7 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
                   ? 84
                   : 24,
           right: isDragging && (draggingIndex == index)
-              ?
-              // draggingChildIndex == index
-              //     ? (dragPosition?.dx ?? 0) + 50
-              dragPosition?.dx ?? 0
+              ? dragPosition?.dx ?? 0
               : keys[index].value as double,
           child: AnimatedScale(
               scale: movingIndex == (guest?.index ?? -2) ? 1.35 : 1,
@@ -382,7 +277,8 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
                   key: keys[index],
                   height: seatSize,
                   width: seatSize,
-                  child: guest == null
+                  child: guest == null ||
+                          (isDragging && index == draggingChildIndex)
                       ? !isMoving
                           ? Visibility(
                               visible: isAddingPerson || isAddingPet,
@@ -423,28 +319,10 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
                                               color: BJColors.buttonBorderLight,
                                               dashPattern: const [3, 3],
                                               child: Center(
-                                                  child: AvatarGlow(
-                                                      child: CircleAvatar(
-                                                          backgroundColor: BJColors
-                                                              .buttonColorActive
-                                                              .withOpacity(0.1),
-                                                          radius: 10.0)))))))
+                                                  child:
+                                                      AvatarGlow(child: CircleAvatar(backgroundColor: BJColors.buttonColorActive.withOpacity(0.1), radius: 10.0)))))))
                       : Draggable(
-                          feedback: guest.updateable
-                              ? SizedBox(
-                                  height: 100,
-                                  width: 100,
-                                  child: Stack(children: [
-                                    if (guest is Person && guest.pets != null)
-                                      Positioned(
-                                          top: 10,
-                                          right: 10,
-                                          child: chosenSeat(
-                                              guests[guest.pets?.index ?? -1]!,
-                                              index)),
-                                    chosenSeat(guest, index)
-                                  ]))
-                              : const SizedBox(),
+                          feedback: guest.updateable ? DragFeedback(key: _dragFeedbackKey, guest: guest, lineLength: lineLength, id: widget.id, guests: guests, position: dragPosition ?? const Offset(0, 0)) : const SizedBox(),
                           onDragStarted: guest.updateable
                               ? () => setState(() {
                                     isMoving = true;
@@ -461,15 +339,41 @@ class _SeatPanelState extends State<SeatPanel> with TickerProviderStateMixin {
                                     }
                                   })
                               : null,
-                          onDragEnd: guest.updateable ? dragItemEnd : null,
+                          onDraggableCanceled: (velocity, offset) {
+                            setState(() {
+                              draggingChildIndex = -1;
+                              draggingIndex = -1;
+                              movingIndex = -1;
+                              isMoving = false;
+                              isDragging = false;
+                            });
+
+                            lines.clear();
+                          },
+                          onDragEnd: guest.updateable ? (details) => swapItems(determineIndex(details.offset, widget.screenWidth, widget.id), isDragging: true, draggingChildIndex: draggingChildIndex) : null,
                           onDragUpdate: guest.updateable
                               ? (details) {
                                   setState(() {
                                     dragPosition = details.globalPosition;
+                                    if (_dragFeedbackKey.currentState != null) {
+                                      (_dragFeedbackKey.currentState
+                                              as DragFeedbackState)
+                                          .refresh(details.globalPosition);
+                                    }
                                   });
                                 }
                               : null,
-                          child: chosenSeat(guest, index)))));
+                          child: ChosenSeat(
+                              guest: guest,
+                              index: index,
+                              onPressed: () => selectAssignedSeat(guest),
+                              isVisible: !isDragging || (isDragging && draggingChildIndex != index),
+                              onLongPress: () {
+                                setState(() {
+                                  isMoving = true;
+                                  movingIndex = guest.index ?? -1;
+                                });
+                              })))));
     }
 
     //Travell Details

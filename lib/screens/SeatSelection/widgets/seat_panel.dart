@@ -10,7 +10,6 @@ import 'package:black_jet_mb/screens/SeatSelection/widgets/add_pet_dialog.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/chosen_seat.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/drag_feedback.dart';
 import 'package:black_jet_mb/screens/SeatSelection/widgets/lines.dart';
-import 'package:black_jet_mb/services/logging_service.dart';
 import 'package:black_jet_mb/utils/seat_functions.dart';
 import 'package:black_jet_mb/widgets/bj_icon.dart';
 import 'package:dotted_border/dotted_border.dart';
